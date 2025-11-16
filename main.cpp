@@ -1,111 +1,188 @@
 #include <iostream>
+#include <vector>
 #include <fstream>
-#include <iomanip>
-#include <cmath>
 #include <random>
+#include <algorithm>
+#include <chrono>
+
+class ArrayGenerator {
+private:
+    std::vector<int> rand_arr;
+    std::vector<int> rev_arr;
+    std::vector<int> almost_sorted_arr;
+
+public:
+    ArrayGenerator() {
+        rand_arr.resize(100000);
+        rev_arr.resize(100000);
+        almost_sorted_arr.resize(100000);
+
+        std::mt19937 rng(12345);
+        std::uniform_int_distribution<int> dist(0, 10000);
+
+        for (int i = 0; i < 100000; i++) {
+            int v = dist(rng);
+            rand_arr[i] = v;
+            rev_arr[i] = v;
+            almost_sorted_arr[i] = v;
+        }
+
+        std::sort(rev_arr.begin(), rev_arr.end());
+        std::reverse(rev_arr.begin(), rev_arr.end());
+
+        std::sort(almost_sorted_arr.begin(), almost_sorted_arr.end());
+        for (int j = 0; j < 200; j++) {
+            int a = rng() % 100000;
+            int b = rng() % 100000;
+            std::swap(almost_sorted_arr[a], almost_sorted_arr[b]);
+        }
+    }
+
+    std::vector<int> getRandom(int n) {
+        return std::vector<int>(rand_arr.begin(), rand_arr.begin() + n);
+    }
+
+    std::vector<int> getReversed(int n) {
+        return std::vector<int>(rev_arr.begin(), rev_arr.begin() + n);
+    }
+
+    std::vector<int> getAlmostSorted(int n) {
+        return std::vector<int>(almost_sorted_arr.begin(), almost_sorted_arr.begin() + n);
+    }
+};
+
+class SortTester {
+public:
+    SortTester() = default;
+
+    long long testMergeSort(const std::vector<int> &arr) {
+        std::vector<int> a = arr;
+        std::vector<int> tmp(a.size());
+
+        auto s = std::chrono::high_resolution_clock::now();
+        mergeSort(a, tmp, 0, (int)a.size());
+        auto e = std::chrono::high_resolution_clock::now();
+
+        return std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
+    }
+
+    long long testHybridSort(const std::vector<int> &arr, int threshold) {
+        std::vector<int> a = arr;
+        std::vector<int> tmp(a.size());
+
+        auto s = std::chrono::high_resolution_clock::now();
+        mergeSortHybrid(a, tmp, 0, (int)a.size(), threshold);
+        auto e = std::chrono::high_resolution_clock::now();
+
+        return std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
+    }
+
+private:
+    void insertionSort(std::vector<int> &a, int l, int r) {
+        for (int i = l + 1; i < r; i++) {
+            int key = a[i];
+            int j = i - 1;
+            while (j >= l && a[j] > key) {
+                a[j + 1] = a[j];
+                j--;
+            }
+            a[j + 1] = key;
+        }
+    }
+
+    void mergeRanges(std::vector<int> &a, std::vector<int> &tmp,
+                     int l, int m, int r) {
+        int i = l;
+        int j = m;
+        int k = l;
+
+        while (i < m && j < r) {
+            if (a[i] <= a[j]) {
+                tmp[k++] = a[i++];
+            } else {
+                tmp[k++] = a[j++];
+            }
+        }
+
+        while (i < m) {
+            tmp[k++] = a[i++];
+        }
+        while (j < r) {
+            tmp[k++] = a[j++];
+        }
+
+        for (int t = l; t < r; t++) {
+            a[t] = tmp[t];
+        }
+    }
+
+    void mergeSort(std::vector<int> &a, std::vector<int> &tmp,
+                   int l, int r) {
+        if (r - l <= 1) {
+            return;
+        }
+        int m = l + (r - l) / 2;
+        mergeSort(a, tmp, l, m);
+        mergeSort(a, tmp, m, r);
+        mergeRanges(a, tmp, l, m, r);
+    }
+
+    void mergeSortHybrid(std::vector<int> &a, std::vector<int> &tmp,
+                         int l, int r, int threshold) {
+        if (r - l <= threshold) {
+            insertionSort(a, l, r);
+            return;
+        }
+        int m = l + (r - l) / 2;
+        mergeSortHybrid(a, tmp, l, m, threshold);
+        mergeSortHybrid(a, tmp, m, r, threshold);
+        mergeRanges(a, tmp, l, m, r);
+    }
+};
 
 int main() {
-    double x1 = 1.0;
-    double y1 = 1.0;
-    double r1 = 1.0;
-    double x2 = 1.5;
-    double y2 = 2.0;
-    double r2 = std::sqrt(5.0) / 2.0;
-    double x3 = 2.0;
-    double y3 = 1.5;
-    double r3 = std::sqrt(5.0) / 2.0;
-    double S_exact;
-    {
-        double pi = std::acos(-1.0);
-        double part1 = 0.25 * pi;
-        double part2 = 1.25 * std::asin(0.8);
-        double part3 = 1.0;
-        S_exact = part1 + part2 - part3;
+    ArrayGenerator gen;
+    SortTester tester;
+
+    std::vector<int> sizes;
+    for (int i = 500; i <= 100000; i += 100) {
+        sizes.push_back(i);
     }
 
-    double wide_xmin = x1 - r1;
-    if (x2 - r2 < wide_xmin) {
-        wide_xmin = x2 - r2;
-    }
-    if (x3 - r3 < wide_xmin) {
-        wide_xmin = x3 - r3;
-    }
-    double wide_xmax = x1 + r1;
-    if (x2 + r2 > wide_xmax) {
-        wide_xmax = x2 + r2;
-    }
-    if (x3 + r3 > wide_xmax) {
-        wide_xmax = x3 + r3;
-    }
-    double wide_ymin = y1 - r1;
-    if (y2 - r2 < wide_ymin) {
-        wide_ymin = y2 - r2;
-    }
-    if (y3 - r3 < wide_ymin) {
-        wide_ymin = y3 - r3;
-    }
-    double wide_ymax = y1 + r1;
-    if (y2 + r2 > wide_ymax) {
-        wide_ymax = y2 + r2;
-    }
-    if (y3 + r3 > wide_ymax) {
-        wide_ymax = y3 + r3;
-    }
+    int threshold = 15;
 
-    double tight_xmin = 0.88;
-    double tight_xmax = 2.00;
-    double tight_ymin = 0.88;
-    double tight_ymax = 2.00;
-    std::ofstream out_wide("wide_results.csv");
-    std::ofstream out_tight("tight_results.csv");
-    out_wide << "N,оценочно,погрешность\n";
-    out_tight << "N,оценочно,погрешность\n";
-    std::mt19937_64 rng(139);
-    for (int n = 100; n <= 100000; n += 500) {
-        long long inside_wide = 0;
-        long long inside_tight = 0;
-        double wx = wide_xmax - wide_xmin;
-        double wy = wide_ymax - wide_ymin;
-        double tx = tight_xmax - tight_xmin;
-        double ty = tight_ymax - tight_ymin;
-        std::mt19937_64 rng_wide = rng;
-        std::mt19937_64 rng_tight = rng;
+    auto run_tests = [&](const std::string &fname,
+                         auto generator) {
+        std::ofstream out(fname);
+        out << "size,merge,hybrid\n";
 
-        for (int i = 0; i < n; i++) {
-            double rx = rng_wide() / double(std::mt19937_64::max());
-            double ry = rng_wide() / double(std::mt19937_64::max());
-            double xx = wide_xmin + wx * rx;
-            double yy = wide_ymin + wy * ry;
-            bool ok1 = ((xx - x1)*(xx - x1) + (yy - y1)*(yy - y1) <= r1*r1);
-            bool ok2 = ((xx - x2)*(xx - x2) + (yy - y2)*(yy - y2) <= r2*r2);
-            bool ok3 = ((xx - x3)*(xx - x3) + (yy - y3)*(yy - y3) <= r3*r3);
-            if (ok1 && ok2 && ok3) {
-                inside_wide++;
+        for (int n : sizes) {
+            long long sum_m = 0;
+            long long sum_h = 0;
+
+            for (int t = 0; t < 5; t++) {
+                std::vector<int> arr = generator(n);
+                sum_m += tester.testMergeSort(arr);
+                sum_h += tester.testHybridSort(arr, threshold);
             }
-        }
-        double sq_wide = wx * wy;
-        double sq_pogr_wide = sq_wide * (double(inside_wide) / double(n));
-        double err_wide = std::fabs(sq_pogr_wide - S_exact) / S_exact;
-        out_wide << n << "," << std::setprecision(15)
-                 << sq_pogr_wide << "," << err_wide << "\n";
 
-        for (int i = 0; i < n; i++) {
-            double rx = rng_tight() / double(std::mt19937_64::max());
-            double ry = rng_tight() / double(std::mt19937_64::max());
-            double xx = tight_xmin + tx * rx;
-            double yy = tight_ymin + ty * ry;
-            bool ok1 = ((xx - x1)*(xx - x1) + (yy - y1)*(yy - y1) <= r1*r1);
-            bool ok2 = ((xx - x2)*(xx - x2) + (yy - y2)*(yy - y2) <= r2*r2);
-            bool ok3 = ((xx - x3)*(xx - x3) + (yy - y3)*(yy - y3) <= r3*r3);
-            if (ok1 && ok2 && ok3) {
-                inside_tight++;
-            }
+            long long avg_m = sum_m / 5;
+            long long avg_h = sum_h / 5;
+            out << n << "," << avg_m << "," << avg_h << "\n";
+
+            std::cout << "Done " << n << "\n";
         }
-        double sq_tight = tx * ty;
-        double sq_pogr_tight = sq_tight * (double(inside_tight) / double(n));
-        double err_tight = std::fabs(sq_pogr_tight - S_exact) / S_exact;
-        out_tight << n << "," << std::setprecision(15)
-                  << sq_pogr_tight << "," << err_tight << "\n";
-    }
+    };
+
+    run_tests("random_results.csv",
+              [&](int n){ return gen.getRandom(n); });
+
+    run_tests("reversed_results.csv",
+              [&](int n){ return gen.getReversed(n); });
+
+    run_tests("almost_sorted_results.csv",
+              [&](int n){ return gen.getAlmostSorted(n); });
+
+    std::cout << "ALL DONE\n";
     return 0;
 }
