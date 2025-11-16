@@ -169,8 +169,6 @@ int main() {
             long long avg_m = sum_m / 5;
             long long avg_h = sum_h / 5;
             out << n << "," << avg_m << "," << avg_h << "\n";
-
-            std::cout << "Done " << n << "\n";
         }
     };
 
@@ -182,7 +180,5 @@ int main() {
 
     run_tests("almost_sorted_results.csv",
               [&](int n){ return gen.getAlmostSorted(n); });
-
-    std::cout << "ALL DONE\n";
     return 0;
 }
